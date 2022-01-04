@@ -1,0 +1,66 @@
+﻿@page "/fetchdata"
+@using Models
+@using Microsoft.AspNetCore.SignalR.Client
+
+<PageTitle>Crypto Market Simulator</PageTitle>
+
+<h1>Crypto Market Simulator</h1>
+
+<p>This component demonstrates change price realtime of cryptos.</p>
+
+@if (cryptos == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Initials</th>
+                <th>Name</th>
+                <th>BasePrice</th>
+                <th>Price</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var crypto in cryptos)
+            {
+                <tr>
+                    <td>@crypto.Initials</td>
+                    <td>@crypto.Name</td>
+                    <td>@crypto.BasePrice</td>
+                    <td>@crypto.Price</td>
+                    <td>@crypto.Date.ToShortDateString()</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code 
+{
+     private List<Crypto> cryptos = new();
+     private string Url = "https://localhost:7018/crypto-hub";
+
+     protected override async Task OnInitializedAsync()
+     {
+          await using var connection = new HubConnectionBuilder()
+                                            .WithUrl(Url)
+                                            .Build();
+
+          await connection.StartAsync();
+
+          await foreach (var crypto in connection.StreamAsync<Crypto>("Streaming"))
+          {
+              var find = cryptos.FirstOrDefault(x => x.Initials == crypto.Initials);
+              if (find is not null)
+                cryptos.Remove(find);
+
+              cryptos.Add(crypto);
+              
+              StateHasChanged();
+          }
+    }   
+}
